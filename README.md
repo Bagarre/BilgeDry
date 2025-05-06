@@ -1,4 +1,4 @@
-![Schematic](schematic.jpeg)
+![Schematic](schematic.jpg)
 
 # BilgeDry: Smart Dry Bilge Controller
 
