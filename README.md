@@ -1,3 +1,5 @@
+![Schematic](schematic.jpeg)
+
 # BilgeDry: Smart Dry Bilge Controller
 
 This project automates the dry bilge management for a boat using:
