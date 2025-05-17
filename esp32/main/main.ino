@@ -1,26 +1,53 @@
-// main.ino (default 4 zones with enable/disable and editable in config UI)
+/*
+ * BilgeDry - ESP32-based Dry Bilge Management System
+ *
+ * Features:
+ * - Web-based configuration and status dashboard
+ * - Per-zone settings: name, GPIO pin, expected current, enable/disable
+ * - INA260 current sensor integration
+ * - Dry run detection based on current draw threshold
+ * - Mobile-friendly web interface served via SPIFFS
+ * - Configurable run interval in minutes
+ * - RESTful JSON API for status and config
+ *
+ * Developed for onboard pump automation using ESP32
+ * Default AP mode: SSID "BilgeDry", Password "KIA2GZ4XX"
+ */
+
 #include <WiFi.h>
 #include <FS.h>
 #include <SPIFFS.h>
 #include <ArduinoJson.h>
 #include <ESPAsyncWebServer.h>
-#include <ESPmDNS.h>
-
+#include <EEPROM.h>
+#include <Wire.h>
+#include <Adafruit_INA260.h>
 
 AsyncWebServer server(80);
 StaticJsonDocument<2048> configDoc;
 
-int interval = 60;  // Default run frequency in minutes
+#include "config.h"  // Thresholds and constants
 
+int interval = 60;  // Default run frequency in minutes
+unsigned long lastCycle = 0;
+bool pumpActive = false;
+unsigned long pumpStartTime = 0;
+
+Adafruit_INA260 ina260;
+
+// Holds configuration for each zone
 struct ZoneConfig {
   String name;
   int pin;
   float amp;
   bool enabled;
+  unsigned long lastRun;
+  bool dryRunDetected;
 };
 
 std::vector<ZoneConfig> zones;
 
+// Load configuration from SPIFFS (config.json)
 void loadConfig() {
   File file = SPIFFS.open("/config.json", "r");
   if (file) {
@@ -36,6 +63,8 @@ void loadConfig() {
           zone.pin = z["pin"] | 0;
           zone.amp = z["amp"] | 0.0;
           zone.enabled = z["enabled"] | true;
+          zone.lastRun = 0;
+          zone.dryRunDetected = false;
           zones.push_back(zone);
         }
       }
@@ -43,13 +72,13 @@ void loadConfig() {
     file.close();
   }
   if (zones.empty()) {
-    // Default 4 zones
     for (int i = 0; i < 4; i++) {
-      zones.push_back({"Zone " + String(i + 1), 0, 0.0, true});
+      zones.push_back({"Zone " + String(i + 1), 0, 0.0, true, 0, false});
     }
   }
 }
 
+// Save current config to SPIFFS
 void saveConfig() {
   configDoc.clear();
   configDoc["interval"] = interval;
@@ -71,15 +100,26 @@ void saveConfig() {
 void setup() {
   Serial.begin(115200);
   SPIFFS.begin(true);
-  MDNS.begin("bilgedry");
+  EEPROM.begin(512);
   loadConfig();
 
+  // Initialize INA260 current sensor
+  if (!ina260.begin()) {
+    Serial.println("Failed to find INA260 chip");
+  } else {
+    Serial.println("INA260 connected");
+  }
+
+  // Start Wi-Fi AP
   WiFi.softAP("BilgeDry", "KIA2GZ4XX");
 
+  // Serve JSON status
   server.on("/api/v1/status", HTTP_GET, [](AsyncWebServerRequest *request) {
     StaticJsonDocument<1024> statusDoc;
     JsonArray zoneArr = statusDoc.createNestedArray("zones");
-    statusDoc["pumpAmps"] = 2.3;
+    float amps = 0.0;
+    if (ina260.begin()) amps = ina260.readCurrent() / 1000.0;
+    statusDoc["pumpAmps"] = amps;
     statusDoc["interval"] = interval;
 
     for (size_t i = 0; i < zones.size(); i++) {
@@ -87,9 +127,10 @@ void setup() {
       z["id"] = i;
       z["name"] = zones[i].name;
       z["status"] = zones[i].enabled ? "Idle" : "Disabled";
-      z["lastRun"] = millis();
+      z["lastRun"] = zones[i].lastRun;
       z["pin"] = zones[i].pin;
       z["enabled"] = zones[i].enabled;
+      z["dryRun"] = zones[i].dryRunDetected;
     }
 
     String out;
@@ -97,6 +138,7 @@ void setup() {
     request->send(200, "application/json", out);
   });
 
+  // Return current config
   server.on("/api/v1/config", HTTP_GET, [](AsyncWebServerRequest *request) {
     StaticJsonDocument<1024> doc;
     doc["interval"] = interval;
@@ -113,6 +155,7 @@ void setup() {
     request->send(200, "application/json", out);
   });
 
+  // Accept new config via POST
   server.on("/api/v1/config", HTTP_POST, [](AsyncWebServerRequest *request){}, NULL,
     [](AsyncWebServerRequest *request, uint8_t *data, size_t len, size_t index, size_t total) {
       StaticJsonDocument<1024> doc;
@@ -130,20 +173,41 @@ void setup() {
         zone.pin = z["pin"] | 0;
         zone.amp = z["amp"] | 0.0;
         zone.enabled = z["enabled"] | true;
+        zone.lastRun = 0;
+        zone.dryRunDetected = false;
         zones.push_back(zone);
       }
       saveConfig();
       request->send(200, "application/json", "{\"status\":\"ok\"}");
     });
 
-  server.serveStatic("/", SPIFFS, "/").setDefaultFile("index.html");
+  // Serve web UI
+  server.serveStatic("/", SPIFFS, "/webroot/").setDefaultFile("index.html");
   server.begin();
 }
 
-void loop() {}
+// Main loop: cycles zones per interval and performs dry run detection
+void loop() {
+  if (millis() - lastCycle > interval * 60UL * 1000UL) {
+    lastCycle = millis();
+    for (auto& zone : zones) {
+      if (!zone.enabled) continue;
 
-String serializeJsonToString(JsonDocument& doc) {
-  String out;
-  serializeJson(doc, out);
-  return out;
+      digitalWrite(zone.pin, HIGH);  // Activate
+      unsigned long start = millis();
+      unsigned long belowThresholdTime = 0;
+
+      while (millis() - start < 10000) {
+        float measuredCurrent = ina260.readCurrent() / 1000.0; // mA to A
+        if (measuredCurrent < zone.amp * DRY_RUN_THRESHOLD_RATIO) {
+          belowThresholdTime++;
+        }
+        delay(1);
+      }
+
+      digitalWrite(zone.pin, LOW);
+      zone.lastRun = millis();
+      zone.dryRunDetected = (belowThresholdTime > 8000);
+    }
+  }
 }
