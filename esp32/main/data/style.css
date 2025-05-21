@@ -1,0 +1,358 @@
+body {
+  font-family: system-ui, sans-serif;
+  background: linear-gradient(to bottom, #f3f4f6, #ffffff);
+  margin: 0;
+  padding: 0;
+  color: #1f2937;
+}
+
+header {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: #2563eb;
+  color: white;
+  padding: 1rem;
+  font-size: 1.25rem;
+  font-weight: bold;
+  text-align: center;
+}
+
+main {
+  padding: 1rem;
+  max-width: 700px;
+  margin: auto;
+}
+
+.card {
+  background: white;
+  border-radius: 1rem;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
+  padding: 1.5rem;
+  margin-bottom: 1rem;
+}
+
+.status-grid,
+.config-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.5rem 1rem;
+  margin-top: 1rem;
+}
+
+.status-grid div:nth-child(4n+1),
+.status-grid div:nth-child(4n+2) {
+  background-color: #ffffff;
+}
+
+.status-grid div:nth-child(4n+3),
+.status-grid div:nth-child(4n+4) {
+  background-color: #f9fafb;
+}
+
+input[type="text"],
+input[type="password"],
+input[type="number"] {
+  border: 1px solid #d1d5db;
+  border-radius: 0.5rem;
+  padding: 0.5rem;
+  width: 100%;
+  font-size: 0.95rem;
+}
+
+button {
+  background: #2563eb;
+  color: white;
+  border: none;
+  padding: 0.5rem 1rem;
+  font-size: 0.9rem;
+  border-radius: 0.375rem;
+  cursor: pointer;
+}
+
+button.reboot {
+  background: #1e40af;
+}
+
+.button-row {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  margin-top: 1rem;
+}
+
+footer {
+  position: sticky;
+  bottom: 0;
+  background: white;
+  text-align: center;
+  font-size: 0.8rem;
+  color: #6b7280;
+  padding: 1rem;
+  border-top: 1px solid #e5e7eb;
+}
+
+pre.log-box {
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 0.5rem;
+  padding: 1rem;
+  max-height: 200px;
+  overflow-y: auto;
+  font-size: 0.85rem;
+  white-space: pre-wrap;
+  line-height: 1.4;
+}
+
+
+.status-grid,
+.config-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.5rem 1rem;
+  margin-top: 1rem;
+}
+
+.config-grid div:nth-child(4n+1),
+.config-grid div:nth-child(4n+2) {
+  background-color: #ffffff;
+}
+
+.config-grid div:nth-child(4n+3),
+.config-grid div:nth-child(4n+4) {
+  background-color: #f9fafb;
+}
+
+input[type="text"],
+input[type="password"] {
+  border: 1px solid #d1d5db;
+  border-radius: 0.5rem;
+  padding: 0.5rem;
+  width: 100%;
+  font-size: 0.95rem;
+}
+.switch {
+  position: relative;
+  display: inline-block;
+  width: 48px;
+  height: 24px;
+}
+
+.switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background-color: #ccc;
+  transition: 0.4s;
+  border-radius: 24px;
+}
+
+.slider:before {
+  position: absolute;
+  content: "";
+  height: 18px;
+  width: 18px;
+  left: 3px;
+  bottom: 3px;
+  background-color: white;
+  transition: 0.4s;
+  border-radius: 50%;
+}
+
+input:checked + .slider {
+  background-color: #10b981; /* green */
+}
+
+input:checked + .slider:before {
+  transform: translateX(24px);
+}
+
+h2 {
+  color: #1f2937;
+  border-bottom: 1px solid #e5e7eb;
+  padding-bottom: 0.25rem;
+  margin-bottom: 1rem;
+}
+
+header {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: #2563eb;
+  color: white;
+  padding: 1rem;
+  font-size: 1.25rem;
+  font-weight: bold;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+header .icon-left {
+  height: 100%;
+    width: auto;              /* preserve aspect ratio */
+    object-fit: contain;      /* ensure it scales nicely */
+    margin-right: 0.5rem;
+  }
+
+header .title {
+  flex: 1;
+  text-align: center;
+}
+
+/* Toggle slider */
+.switch {
+  position: relative;
+  display: inline-block;
+  width: 48px;
+  height: 24px;
+}
+
+.switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background-color: #ccc;
+  transition: 0.4s;
+  border-radius: 24px;
+}
+
+.slider:before {
+  position: absolute;
+  content: "";
+  height: 18px;
+  width: 18px;
+  left: 3px;
+  bottom: 3px;
+  background-color: white;
+  transition: 0.4s;
+  border-radius: 50%;
+}
+
+input:checked + .slider {
+  background-color: #10b981;
+}
+
+input:checked + .slider:before {
+  transform: translateX(24px);
+}
+
+
+.selectWrapper{
+}
+.selectBox{
+}
+
+.config-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;        /* space between input & slider */
+  margin-bottom:1rem; /* your usual spacing */
+}
+
+.config-input {
+  flex: 1;            /* take up all leftover room */
+  min-width: 0;       /* prevents overflow in some browsers */
+}
+
+/* if your switch has its own class */
+.switch {
+  flex-shrink: 0;     /* don’t let the switch shrink */
+}
+/* 1) Base styling for inputs & selects */
+.config-input,
+.config-select {
+  flex: 1;                    /* fill the available space */
+  min-width: 0;               /* prevent overflow in flexbox */
+  padding: 0.5rem 0.75rem;    /* vertical & horizontal padding */
+  font-size: 0.9375rem;       /* 15px equivalent */
+  line-height: 1.25;
+  color: #1f2937;             /* dark-gray text */
+  background-color: #fff;
+  border: 1px solid #e5e7eb;  /* light-gray border */
+  border-radius: 0.375rem;    /* 6px corners */
+  appearance: none;           /* remove native arrow */
+  background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg%20fill%3d'%236b7280'%20viewBox%3d'0%200%204%205'%20xmlns%3d'http://www.w3.org/2000/svg'%3e%3cpath%20d%3d'M2%200L0%202h4L2%200zm0%205L0%203h4l-2%202z'/%3e%3c/svg%3e");
+  background-repeat: no-repeat;
+  background-position: right 0.75rem center;
+  background-size: 0.65em 0.65em;
+}
+
+/* 2) Container to position the arrow properly */
+.select-container {
+  position: relative;
+}
+
+/* 3) On focus, highlight */
+.config-input:focus,
+.config-select:focus {
+  outline: none;
+  border-color: #2563eb;             /* blue-600 */
+  box-shadow: 0 0 0 1px #2563eb;
+}
+
+/* 4) Flex‐row wrapper */
+.config-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+/* 5) Prevent the select’s arrow from overlapping text */
+.config-select {
+  padding-right: 2.5rem;             /* give room for the arrow */
+}
+
+
+:root {
+  --primary: #0074D9; /* icon’s blue */
+}
+.header-bar {
+  background: var(--primary);
+}
+#logOutput {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.log-entry {
+  padding: 0.25rem 0;
+  border-bottom: 1px solid #e5e7eb;
+  font-size: 0.875rem;
+  display: flex;
+  gap: 0.5rem;
+}
+
+.log-time {
+  color: #6b7280;
+  flex-shrink: 0;
+}
+
+.log-msg {
+  color: #111827;
+}
+
+.header-bar {
+  background: var(--primary);
+  display: flex;
+  align-items: stretch;     /* ← changed from center */
+  justify-content: space-between;
+  height: 3rem;              /* or whatever height you prefer */
+}

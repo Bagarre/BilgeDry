@@ -1,16 +1,25 @@
+// File: config.h
+// Default configuration values for BilgeDry
 
-#pragma once
+#ifndef BILGEDRY_CONFIG_H
+#define BILGEDRY_CONFIG_H
 
-#define DEFAULT_SSID     "BilgeDry"
-#define DEFAULT_PASSWORD "KIA2GZ4"
-#define MAX_ZONES        4
-#define HOSTNAME         "bilgedry.local"
+// Run scheduling (in hours)
+#define DEFAULT_RUN_FREQUENCY_H 1
 
+// Delays and thresholds (in seconds and amps)
+#define DEFAULT_RUN_DELAY_S 3
+#define DEFAULT_RUN_CURRENT_A 1.0f
+#define DEFAULT_RUN_MAX_S 10
 
-#define DRY_RUN_THRESHOLD_RATIO 0.8f  // 80% of expected current
+// Zone names and enabled flags
+#define DEFAULT_ZONE1_NAME "Zone 1"
+#define DEFAULT_ZONE1_ENABLED true
+#define DEFAULT_ZONE2_NAME "Zone 2"
+#define DEFAULT_ZONE2_ENABLED false
+#define DEFAULT_ZONE3_NAME "Zone 3"
+#define DEFAULT_ZONE3_ENABLED true
+#define DEFAULT_ZONE4_NAME "Zone 4"
+#define DEFAULT_ZONE4_ENABLED true
 
-// EEPROM locations (reserved for future use)
-#define EEPROM_LOG_START 0
-#define EEPROM_LOG_SIZE  256
-
-#endif
+#endif // BILGEDRY_CONFIG_H
