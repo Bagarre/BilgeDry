@@ -196,11 +196,9 @@ header {
 }
 
 header .icon-left {
-  height: 100%;
-    width: auto;              /* preserve aspect ratio */
-    object-fit: contain;      /* ensure it scales nicely */
-    margin-right: 0.5rem;
-  }
+  height: 36px;
+  width: 36px;
+}
 
 header .title {
   flex: 1;
@@ -347,12 +345,4 @@ input:checked + .slider:before {
 
 .log-msg {
   color: #111827;
-}
-
-.header-bar {
-  background: var(--primary);
-  display: flex;
-  align-items: stretch;     /* ← changed from center */
-  justify-content: space-between;
-  height: 3rem;              /* or whatever height you prefer */
 }

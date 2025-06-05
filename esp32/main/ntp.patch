@@ -1,0 +1,71 @@
+--- main.ino
++++ main.ino
+@@ –1,6 +1,8 @@
+ #include <WiFi.h>
+ #include <AsyncTCP.h>
+ #include <ESPAsyncWebServer.h>
++#include <time.h>            // <-- for NTP & epoch
+ #include <SPIFFS.h>
++#include <ESPmDNS.h>
+ #include <ArduinoJson.h>
+ #include <Adafruit_INA260.h>
+
+@@
+// add these globals near the top:
+- unsigned long lastRunTime = 0;
+- unsigned long nextRunTime = 0;
++ unsigned long lastRunTime = 0;    // still used for millis-based scheduling
++ unsigned long nextRunTime = 0;
++ time_t        lastRunEpoch = 0;   // real-world epoch seconds
++ time_t        nextRunEpoch = 0;
+
+ void setup() {
+   Serial.begin(115200);
+@@
+   // after Wi-Fi is connected, before server.begin():
+-  if (MDNS.begin("BilgeDry")) {
+-    Serial.println("mDNS started: http://bilgedry.local");
+-  }
++  configTime(0, 0, "pool.ntp.org");               // start NTP
++  Serial.print("Waiting for NTP... ");
++  while (time(nullptr) < 24*3600) { delay(500); Serial.print("."); }
++  Serial.println(" done");
+
++  lastRunEpoch = time(nullptr);
++  nextRunEpoch = lastRunEpoch + runFrequencyMs/1000UL;
++
++  if (MDNS.begin("BilgeDry")) {
++    Serial.println("mDNS started: http://bilgedry.local");
++  }
+@@
+ void loop() {
+   if (demoMode) {
+     demoCycle();
+     delay(runFrequencyMs);
++    lastRunEpoch = time(nullptr);
++    nextRunEpoch = lastRunEpoch + runFrequencyMs/1000UL;
+     return;
+   }
+
+   unsigned long now = millis();
+   if (now >= nextRunTime) {
+     lastRunTime = now;
+     performCycle();
+     nextRunTime = now + runFrequencyMs;
++    lastRunEpoch = time(nullptr);
++    nextRunEpoch = lastRunEpoch + runFrequencyMs/1000UL;
+     logEvent("Cycle completed");
+   }
+ }
+
+@@ // API Handlers
+ void handleGetStatus(AsyncWebServerRequest *req) {
+-  StaticJsonDocument<256> doc;
+-  doc["lastRun"] = lastRunTime / 1000UL;
+-  doc["nextRun"] = nextRunTime / 1000UL;
++  StaticJsonDocument<256> doc;
++  doc["lastRun"] = (unsigned long)lastRunEpoch;    // real epoch seconds
++  doc["nextRun"] = (unsigned long)nextRunEpoch;
+
+   for (int i = 0; i < kNumZones; ++i) {
+     String idx = String(i+1);

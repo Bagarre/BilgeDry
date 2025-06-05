@@ -9,7 +9,9 @@
 
 // Delays and thresholds (in seconds and amps)
 #define DEFAULT_RUN_DELAY_S 3
-#define DEFAULT_RUN_CURRENT_A 1.0f
+#define DEFAULT_RUN_CURRENT_A 2.0f
+#define DEFAULT_IDLE_CURRENT_A 0.5f
+
 #define DEFAULT_RUN_MAX_S 10
 
 // Zone names and enabled flags

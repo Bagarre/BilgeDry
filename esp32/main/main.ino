@@ -16,6 +16,7 @@
 const int kNumZones = 4;
 const int solenoidPins[kNumZones] = {14, 27, 26, 25};
 const int pumpPin = 32;
+
 bool systemEnabled = true;
 
 struct Zone {
@@ -31,8 +32,11 @@ unsigned long runDelayMs;
 float        runCurrentThreshold;
 unsigned long runMaxMs;
 
-unsigned long lastRunTime = 0;
+unsigned long lastRunTime = 0;    // still used for millis-based scheduling
 unsigned long nextRunTime = 0;
+time_t        lastRunEpoch = 0;   // real-world epoch seconds
+time_t        nextRunEpoch = 0;
+
 
 bool demoMode = true;           // Toggle demo data
 
@@ -56,26 +60,6 @@ void handleGetLogs(AsyncWebServerRequest* req);
 // === Setup ===
 void setup() {
   Serial.begin(115200);
-
-
-  // Configure timezone and NTP servers
-    const char* ntpServer = "pool.ntp.org";
-    const long  gmtOffset_sec = 0;      // adjust to your zone
-    const int   daylightOffset_sec = 0;
-    configTime(gmtOffset_sec, daylightOffset_sec, ntpServer);
-
-    // (optional) wait for time to be set
-    Serial.print("Waiting for NTP time");
-    time_t now = time(nullptr);
-    while (now < 8 * 3600 * 2) {  // crude check
-      delay(500);
-      Serial.print(".");
-      now = time(nullptr);
-    }
-    Serial.println();
-    Serial.print("Current epoch: "); Serial.println(now);
-    // … rest of setup …
-
 
   pinMode(pumpPin, OUTPUT);
   digitalWrite(pumpPin, LOW);  // ensure pump is off at boot
@@ -109,21 +93,38 @@ void setup() {
   // Connect to Wi-Fi (replace SSID/PASSWORD)
   setupWiFi();
 
+
+
+  // Configure timezone and NTP servers
+    const char* ntpServer = "pool.ntp.org";
+    const long  gmtOffset_sec = 0;      // adjust to your zone
+    const int   daylightOffset_sec = 0;
+    configTime(gmtOffset_sec, daylightOffset_sec, ntpServer);
+
+    // after configTime(...)
+    Serial.print("Waiting for NTP");
+    struct tm timeinfo;
+    while (!getLocalTime(&timeinfo)) {
+      Serial.print("+");
+      delay(500);
+    }
+    Serial.println(" done");
+    // now timeinfo is valid—and so is time(nullptr)
+    // … rest of setup …
+
+  lastRunEpoch = time(nullptr);
+  nextRunEpoch = lastRunEpoch + runFrequencyMs/1000UL;
+
   if (MDNS.begin("BilgeDry")) {
     Serial.println("mDNS started: http://bilgedry.local");
   }
 
   // REST API endpoints
   server.on("/api/v1/status",     HTTP_GET,  handleGetStatus);
-
-
   server.on("/api/v1/reboot", HTTP_POST, [](AsyncWebServerRequest *request){
     request->send(200, "application/text", "Robooting");
     ESP.restart();
   });
-
-
-
   server.on("/api/v1/enable", HTTP_GET, [](AsyncWebServerRequest *request){
       StaticJsonDocument<64> doc;
       doc["enabled"] = systemEnabled;
@@ -131,7 +132,6 @@ void setup() {
       serializeJson(doc, out);
       request->send(200, "application/json", out);
     });
-
   server.on("/api/v1/enable", HTTP_POST, [](AsyncWebServerRequest *request){}, nullptr,
     [](AsyncWebServerRequest *request, uint8_t *data, size_t len, size_t index, size_t total) {
       StaticJsonDocument<64> doc;
@@ -143,10 +143,6 @@ void setup() {
 //      if (!systemEnabled) disableField("User disabled");
       request->send(200, "application/json", "{\"status\":\"updated\"}");
   });
-
-
-
-
   server.on("/api/v1/status/run", HTTP_POST, handleManualRun);
   server.on("/api/v1/config",     HTTP_GET,  handleGetConfig);
   server.on("/api/v1/config",     HTTP_POST,
@@ -171,6 +167,8 @@ void loop() {
   if (demoMode) {
     demoCycle();
     delay(runFrequencyMs);
+    lastRunEpoch = time(nullptr);
+    nextRunEpoch = lastRunEpoch + runFrequencyMs/1000UL;
     return;
   }
 
@@ -179,6 +177,8 @@ void loop() {
     lastRunTime = now;
     performCycle();
     nextRunTime = now + runFrequencyMs;
+    lastRunEpoch = time(nullptr);
+    nextRunEpoch = lastRunEpoch + runFrequencyMs/1000UL;
     logEvent("Cycle completed");
   }
 }
@@ -210,7 +210,8 @@ void setupWiFi() {
   // }
 
   WiFi.begin("Bagarre", "Nitt4agm2!");
-  Serial.print("Connecting to WiFi");
+
+  Serial.println("Connecting to WiFi\n");
 
   unsigned long start = millis();
   while (WiFi.status() != WL_CONNECTED && millis() - start < 5000) {
@@ -238,6 +239,7 @@ void loadConfig() {
     runFrequencyMs      = DEFAULT_RUN_FREQUENCY_H * 3600000UL;
     runDelayMs          = DEFAULT_RUN_DELAY_S     * 1000UL;
     runCurrentThreshold = DEFAULT_RUN_CURRENT_A;
+    idleCurrent         = DEFAULT_IDLE_CURRENT_A;
     runMaxMs            = DEFAULT_RUN_MAX_S       * 1000UL;
     zones[0] = { DEFAULT_ZONE1_NAME, DEFAULT_ZONE1_ENABLED, 0 };
     zones[1] = { DEFAULT_ZONE2_NAME, DEFAULT_ZONE2_ENABLED, 0 };
@@ -254,6 +256,7 @@ void loadConfig() {
     runFrequencyMs      = DEFAULT_RUN_FREQUENCY_H * 3600000UL;
     runDelayMs          = DEFAULT_RUN_DELAY_S     * 1000UL;
     runCurrentThreshold = DEFAULT_RUN_CURRENT_A;
+    idleCurrent         = DEFAULT_IDLE_CURRENT_A;
     runMaxMs            = DEFAULT_RUN_MAX_S       * 1000UL;
     zones[0] = { DEFAULT_ZONE1_NAME, DEFAULT_ZONE1_ENABLED, 0 };
     zones[1] = { DEFAULT_ZONE2_NAME, DEFAULT_ZONE2_ENABLED, 0 };
@@ -266,6 +269,7 @@ void loadConfig() {
   runFrequencyMs      = doc["runFrequencyH"].as<unsigned long>() * 3600000UL;
   runDelayMs          = doc["runDelayS"].as<unsigned long>()     * 1000UL;
   runCurrentThreshold = doc["runCurrentA"].as<float>();
+  idleCurrent         = doc["idleCurrentA"].as<float>();
   runMaxMs            = doc["runMaxS"].as<unsigned long>()       * 1000UL;
 
   for (int i = 0; i < kNumZones; ++i) {
@@ -280,6 +284,7 @@ void saveConfig() {
   doc["runFrequencyH"] = runFrequencyMs / 3600000UL;
   doc["runDelayS"]     = runDelayMs / 1000UL;
   doc["runCurrentA"]   = runCurrentThreshold;
+  doc["idleCurrentA"]  = idleCurrent;
   doc["runMaxS"]       = runMaxMs / 1000UL;
   JsonArray arr = doc.createNestedArray("zones");
   for (int i = 0; i < kNumZones; ++i) {
@@ -294,6 +299,8 @@ void saveConfig() {
 
 // === Pump Cycle ===
 void performCycle() {
+
+  //TODO use idleCurrent to determine if pump is running at all.
   for (int i = 0; i < kNumZones; ++i) {
     if (!zones[i].enabled) continue;
     digitalWrite(solenoidPins[i], HIGH);
@@ -326,9 +333,10 @@ void logEvent(const String &event) {
 }
 // === API Handlers ===
 void handleGetStatus(AsyncWebServerRequest *req) {
-  StaticJsonDocument<256> doc;
-  doc["lastRun"]    = lastRunTime / 1000UL;
-  doc["nextRun"]    = nextRunTime / 1000UL;
+   StaticJsonDocument<256> doc;
+  doc["lastRun"] = (unsigned long)lastRunEpoch;    // real epoch seconds
+  doc["nextRun"] = (unsigned long)nextRunEpoch;
+
   for (int i = 0; i < kNumZones; ++i) {
     String idx = String(i+1);
     doc["port" + idx + "Name"]   = zones[i].name;

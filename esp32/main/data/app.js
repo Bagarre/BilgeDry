@@ -68,15 +68,14 @@ function fetchStatus() {
 }
 
 
-
 function fetchConfigs() {
-
   fetch("/api/v1/config")
     .then(res => res.json())
     .then(cfg => {
       document.getElementById("runFrequency").value = cfg.runFrequency || "";
       document.getElementById("runDelay").value = cfg.runDelay || "";
       document.getElementById("runCurrent").value = cfg.runCurrent || "";
+      document.getElementById("idleCurrent").value = cfg.idleCurrent || "";
       document.getElementById("runMax").value = cfg.runMax || "";
       document.getElementById("port1NameConfig").value = cfg.port1Name || "";
       document.getElementById("port2NameConfig").value = cfg.port2Name || "";
@@ -187,6 +186,7 @@ window.onload = () => {
       runFrequency: document.getElementById("runFrequency").value,
       runDelay: document.getElementById("runDelay").value,
       runCurrent: document.getElementById("runCurrent").value,
+      idleCurrent: document.getElementById("idleCurrent").value,
       runMax: document.getElementById("runMax").value,
       port1Name: document.getElementById("port1NameConfig").value,
       port2Name: document.getElementById("port2NameConfig").value,
