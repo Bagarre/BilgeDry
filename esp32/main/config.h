@@ -1,6 +1,7 @@
 // File: config.h
 // Default configuration values for BilgeDry
 
+
 #ifndef BILGEDRY_CONFIG_H
 #define BILGEDRY_CONFIG_H
 
