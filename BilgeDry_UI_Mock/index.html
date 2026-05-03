@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>BilgeDry</title>
+  <link rel="stylesheet" href="/assets/styles.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div>
+      <div class="eyebrow">Boat Utility</div>
+      <h1>BilgeDry</h1>
+      <div id="headerSubtext" class="muted">Loading status…</div>
+    </div>
+    <div class="topbar-actions">
+      <label class="toggle-card">
+        <span>System</span>
+        <input id="systemEnabled" type="checkbox" />
+      </label>
+      <button id="runNowBtn">Run Now</button>
+      <button id="abortBtn" class="secondary">Abort</button>
+    </div>
+  </header>
+
+  <main class="layout">
+    <section class="card hero-card">
+      <div class="hero-grid">
+        <div>
+          <div class="label">Cycle State</div>
+          <div id="cycleState" class="hero-value">—</div>
+          <div id="cycleEvent" class="muted">—</div>
+        </div>
+        <div>
+          <div class="label">Current</div>
+          <div id="currentA" class="hero-value">0.00 A</div>
+          <div id="peakCurrentA" class="muted">Peak —</div>
+        </div>
+        <div>
+          <div class="label">Schedule</div>
+          <div id="nextRun" class="hero-value small">—</div>
+          <div id="lastRun" class="muted">Last —</div>
+        </div>
+      </div>
+      <div id="faultBanner" class="fault hidden"></div>
+    </section>
+
+    <section class="card">
+      <div class="section-head">
+        <h2>Zones</h2>
+        <div class="muted">Per-zone results and last known behavior</div>
+      </div>
+      <div id="zoneCards" class="zone-grid"></div>
+    </section>
+
+    <section class="card two-col-card">
+      <div>
+        <div class="section-head">
+          <h2>Runtime</h2>
+          <div class="muted">Core timing and thresholds</div>
+        </div>
+        <div class="form-grid" id="runtimeForm"></div>
+        <div class="button-row">
+          <button id="saveRuntimeBtn">Save Runtime</button>
+        </div>
+      </div>
+      <div>
+        <div class="section-head">
+          <h2>Network</h2>
+          <div class="muted">Station/AP setup and local access</div>
+        </div>
+        <div class="network-status">
+          <div><strong>Mode:</strong> <span id="networkMode">—</span></div>
+          <div><strong>IP:</strong> <span id="networkIp">—</span></div>
+          <div><strong>SSID:</strong> <span id="networkSsid">—</span></div>
+          <div><strong>mDNS:</strong> <span id="networkMdns">—</span></div>
+        </div>
+        <div class="form-grid" id="networkForm"></div>
+        <div class="button-row">
+          <button id="saveNetworkBtn">Save Network</button>
+          <button id="rebootBtn" class="secondary">Reboot</button>
+        </div>
+      </div>
+    </section>
+
+
+    <section class="card">
+      <div class="section-head">
+        <h2>Simulator</h2>
+        <div class="muted">Mock backend controls for UI walkthrough</div>
+      </div>
+      <div class="button-row compact">
+        <button id="simulateWetBtn" class="secondary">Trigger Wet Zone</button>
+        <button id="simulateFaultBtn" class="secondary">Trigger Fault</button>
+        <button id="simulateIdleBtn" class="secondary">Return to Idle</button>
+      </div>
+      <div class="muted">This mock server fakes status, logs, config saves, and manual runs.</div>
+    </section>
+
+    <section class="card">
+      <div class="section-head">
+        <h2>Logs</h2>
+        <div class="button-row compact">
+          <button id="refreshLogsBtn" class="secondary">Refresh</button>
+          <button id="clearLogsBtn" class="secondary">Clear</button>
+        </div>
+      </div>
+      <div id="logList" class="log-list"></div>
+    </section>
+  </main>
+
+  <div id="toastHost" class="toast-host"></div>
+
+  <script src="/assets/api.js"></script>
+  <script src="/assets/state.js"></script>
+  <script src="/assets/render.js"></script>
+  <script src="/assets/main.js"></script>
+</body>
+</html>

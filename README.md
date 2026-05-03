@@ -1,141 +1,102 @@
+# BilgeDry Production Refactor
 
-# BilgeDry - Dry Bilge Pump Controller
+This version is a real step closer to the alternator project style rather than a simple cleanup.
 
-This ESP32-based system monitors and removes small amounts of water in dry bilge compartments. It controls a self-priming pump and up to 4 solenoid valves (zones), cycling them to check for water.
+## What changed
 
-## Overview
+- Reworked the pump logic into a non-blocking cycle controller with explicit states:
+  - `Idle`
+  - `Prime`
+  - `Running`
+  - `Settling`
+  - `Complete`
+  - `Fault`
+- Split responsibilities into focused modules:
+  - `Storage` for persistent config
+  - `LogManager` for structured event logging
+  - `SensorManager` for INA260 handling and unit normalization
+  - `NetworkManager` for STA/AP/mDNS/time sync
+  - `CycleController` for zone sequencing and decision logic
+  - `WebServerManager` for a cleaner REST API
+- Replaced the old flat UI field sprawl with a cleaner JSON contract built around arrays and grouped config.
+- Added cycle fault tracking, abort handling, queueable manual runs, and explicit per-zone results.
+- Added version/build metadata to the API.
+- Moved web assets under `/assets` and structured the frontend into API/state/render/main files.
 
-![Schematic](schematic.jpg)
+## Why this is better
 
-- Solenoids are opened one at a time and the pump is monitored for amperage to detect water.
-- Cycle repeats every 60 minutes by default.
-- If water is detected (higher than idle current), the zone remains open for a longer duration.
-- All configuration is saved in SPIFFS.
+The original project worked like a single long script. That is fine until you want to add retries, diagnostics, better status, richer logs, NMEA integration, or a more capable UI. Then it becomes a mess fast.
 
-## Configuration File
+This version is shaped so those next steps are practical.
 
-The config file (`/config.json`) contains:
-- `interval`: minutes between cycles
-- `zones`: array of objects with:
-  - `name`: zone label
-  - `pin`: GPIO pin controlling solenoid
-  - `amp`: expected water flow current (float)
-  - `enabled`: boolean
+## Important behavior notes
 
-Example:
-```json
-{
-  "interval": 60,
-  "zones": [
-    { "name": "Aft Bilge", "pin": 16, "amp": 2.3, "enabled": true }
-  ]
-}
+- INA260 current is treated as **amps**, converted from the library's **mA** reading.
+- A zone is considered to have seen water once current reaches `wetCurrentA` during the run.
+- A zone is considered dry once current drops below `dryCurrentA`.
+- A fault is raised if current reaches `faultCurrentA`.
+- The controller no longer blocks the whole app with multi-second `delay()` calls during a cycle.
+
+## Current API surface
+
+- `GET /api/v1/status`
+- `GET /api/v1/config`
+- `POST /api/v1/config`
+- `GET /api/v1/network`
+- `POST /api/v1/network`
+- `POST /api/v1/control/run`
+- `POST /api/v1/control/abort`
+- `POST /api/v1/control/enable`
+- `GET /api/v1/logs`
+- `POST /api/v1/logs/clear`
+- `POST /api/v1/reboot`
+
+## Project structure
+
+```text
+BilgeDry_production/
+├── README.md
+└── esp32/main/
+    ├── main.ino
+    ├── BilgeDryApp.cpp/.h
+    ├── AppTypes.h
+    ├── AppVersion.h
+    ├── Defaults.h
+    ├── Pins.h
+    ├── Storage.cpp/.h
+    ├── LogManager.cpp/.h
+    ├── SensorManager.cpp/.h
+    ├── NetworkManager.cpp/.h
+    ├── CycleController.cpp/.h
+    ├── WebServerManager.cpp/.h
+    └── data/
+        ├── index.html
+        └── assets/
+            ├── styles.css
+            ├── api.js
+            ├── state.js
+            ├── render.js
+            └── main.js
 ```
 
-## Requirements
+## What still needs real hardware validation
 
-- ESP32 Dev Board
-- INA260 for current sensing
-- 12V pump + solenoids
-- Web UI for configuration/status
+This is the honest part:
 
+- It is structurally much better, but I did not compile and flash it on your exact board here.
+- Threshold values will still need tuning on your actual pump and plumbing.
+- The current-based wet/dry model is only as good as the pump signature in the real boat.
+- If the solenoid timing needs per-zone customization, that is not added yet.
+- There is no EEPROM wear strategy beyond normal SPIFFS file saves.
 
----
+## Best next improvements
 
+1. Add per-zone calibration values instead of one global wet/dry threshold.
+2. Add startup self-test and sensor health reporting to status.
+3. Add retry logic for suspicious short runs.
+4. Add a lightweight event history / metrics page.
+5. Add optional NMEA 2000 publish-only status later if you want it to match the rest of the boat systems.
 
-# BilgeDry ESP32 System
+## Recommendation
 
-This project implements a Wi-Fi-enabled dry bilge monitoring and control system using an ESP32. It serves a modern web UI via a built-in access point and supports JSON configuration and status reporting over a REST API.
-
----
-
-## 🔧 Features
-
-- **ESP32-hosted web interface** (works well on phones)
-- REST API:
-  - `GET /api/v1/status`: JSON status of zones and pump
-  - `GET /api/v1/config`: Current configuration
-  - `POST /api/v1/config`: Save configuration (zones, interval, Wi-Fi)
-- **Web UI (in `/webroot`)**:
-  - Configurable zones (name, pin, amps, enabled toggle)
-  - Interval configuration (in minutes)
-  - Real-time status page
-- **Switch-style UI toggles** for zone enable/disable
-- **Defaults to 4 zones**
-- **3.3V operation** (you can bypass onboard regulator with a 3.3V buck into `3V3`)
-- ESP32 runs in **softAP mode by default**:
-  - SSID: `BilgeDry`
-  - Password: `KIA2GZ4`
-
----
-
-## 📁 File Structure
-
-```
-webroot/
-├── index.html         # Status UI
-├── config.html        # Configuration UI
-├── js/
-│   ├── status.js      # Fetch and display /api/v1/status
-│   └── config.js      # Fetch and POST /api/v1/config
-└── css/
-    └── style.css      # Clean, responsive styling and toggle switches
-```
-
----
-
-## 🧪 Uploading to ESP32
-
-1. Place `webroot/` into SPIFFS using ESP32FS.
-2. Flash `main.ino` with the Arduino IDE.
-3. Upload SPIFFS:
-   - Tools > ESP32 Sketch Data Upload
-4. Visit `http://192.168.4.1` when connected to ESP32 softAP.
-
----
-
-## ⚠️ Power Notes
-
-- The ESP32 operates at **3.3V logic** and is **not 5V-tolerant**.
-- You can safely **power the board directly from a regulated 3.3V buck converter** via the `3V3` pin.
-  - Do **not connect USB at the same time** unless your board isolates the onboard regulator.
-- USB power (5V) is acceptable but can cause **overheating** on some cheap dev boards.
-
----
-
-## 🔄 Defaults
-
-- 4 zones initialized with:
-  - Name: `Zone 1` to `Zone 4`
-  - Pin: `0`
-  - Enabled: `true`
-- Default run interval: `60 minutes`
-
----
-
-## 📞 API Example
-
-```http
-GET /api/v1/status
-{
-  "pumpAmps": 2.3,
-  "interval": 60,
-  "zones": [
-    {
-      "id": 0,
-      "name": "Zone 1",
-      "status": "Idle",
-      "lastRun": 892334,
-      "pin": 16,
-      "enabled": true
-    },
-    ...
-  ]
-}
-```
-
----
-
-## 🤝 Credits
-
-Built with ❤️ on ESP32 using AsyncWebServer, SPIFFS, and ArduinoJson.
+This is in a good place to become the one you build and share first. It is much easier to reason about, safer to extend, and closer to how the alternator project should feel across the whole codebase.
